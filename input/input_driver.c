@@ -783,6 +783,36 @@ static int32_t input_state_wrap(
             idx,
             id);
 
+   if (device == RETRO_DEVICE_JOYPAD)
+   {
+      /* Drivers can overflow when sending too many keys at once.. */
+      if (id == RETRO_DEVICE_ID_JOYPAD_MASK && ret)
+      {
+         /* Deal with menu toggle combo buttons that won't stay inside +32767. */
+         if (ret == -0x8000) /* R3 */
+            ret = 0x8000;
+         else if (ret == -0x4000) /* LR+R3 */
+            ret = 0x8000 + 0x4000;
+         else if (ret < 0)
+            ret = 0;
+         return ret;
+      }
+
+      /* No binds, no input. This is for ignoring RETROK_UNKNOWN
+       * if the driver allows setting the key down somehow.
+       * Otherwise all hotkeys and inputs with null bind get triggered. */
+      if (     id != RETRO_DEVICE_ID_JOYPAD_MASK && ret
+            && binds[_port][id].key     == RETROK_UNKNOWN
+            && binds[_port][id].mbutton == NO_BTN
+            && (  (  binds[_port][id].joykey  == NO_BTN
+                  && binds[_port][id].joyaxis == AXIS_NONE)
+               || (  joypad_info->auto_binds[id].joykey  == NO_BTN
+                  && joypad_info->auto_binds[id].joyaxis == AXIS_NONE)
+               )
+         )
+         return 0;
+   }
+
    return ret;
 }
 
